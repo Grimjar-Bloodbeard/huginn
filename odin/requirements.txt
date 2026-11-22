@@ -1,0 +1,5 @@
+flask>=3.0
+zeroconf>=0.130
+# scapy is optional (faster elevated ARP sweep) - needs Npcap installed
+# separately on Windows. Without it, the app falls back to a ping-sweep +
+# OS ARP-cache read, which needs no admin rights and no extra install.

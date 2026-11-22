@@ -1,0 +1,9 @@
+# The ready-to-run bundle ships the Node and Python runtimes and installed modules.
+# Those are large and not source, so they live in the release zip, not in git.
+runtime/
+node_modules/
+**/node_modules/
+kit/site/
+huginn/data/
+*.local.json
+*.log

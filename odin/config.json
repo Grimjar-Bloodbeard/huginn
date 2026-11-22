@@ -1,0 +1,36 @@
+{
+  "subnets": [],
+  "scan": {
+    "ping_timeout_ms": 500,
+    "ping_concurrency": 64,
+    "port_check_timeout_ms": 400,
+    "ports_to_check": [
+      22,
+      80,
+      443,
+      8080,
+      8443,
+      445,
+      3389,
+      5000,
+      32400,
+      9100
+    ],
+    "prefer_scapy_if_elevated": true,
+    "resolve_mdns": true,
+    "auto_rescan_minutes": 15
+  },
+  "diagnostics": {
+    "gateway_ping_count": 8,
+    "double_nat_probe_target": "1.1.1.1",
+    "isolation_test": {
+      "note": "Local test only proves trusted-can-reach-IoT, the less important direction. Run iot_probe.py from a device physically on the IoT subnet for the real bidirectional result; it POSTs back to /api/isolation-report.",
+      "trusted_to_iot_target": ""
+    }
+  },
+  "server": {
+    "host": "127.0.0.1",
+    "port": 7331,
+    "_note": "Ravens kit: this PC only. Don't open this port to the network; it shows the whole network's layout."
+  }
+}

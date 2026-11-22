@@ -1,0 +1,77 @@
+/* Odin's Watch dashboard - dark network-ops console. Same palette family as
+   the home setup (gold/teal on near-black) for visual continuity across the owner's
+   home-lab tools, but its own layout - this is a topology console, not a
+   HUD, so it's built for scanning a device list and a graph, not glanceable
+   gauges. */
+:root{
+  --void:#05070a; --panel:#0b1017; --line:rgba(79,240,224,.18);
+  --gold:#e8b24c; --teal:#4ff0e0; --text:#eef2f5; --muted:#7b8a99;
+  --good:#39ffb0; --warn:#ff9d2e; --bad:#ff5d5d;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--void);color:var(--text);font-family:var(--mono);min-height:100vh;display:flex;flex-direction:column}
+
+header{display:flex;align-items:center;gap:1rem;padding:.9rem 1.4rem;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:1.1rem;letter-spacing:.1em;color:var(--gold);margin:0}
+.meta{display:flex;gap:1rem;font-size:.78rem;color:var(--muted);margin-left:auto}
+#rescan-btn{font-family:inherit;background:rgba(79,240,224,.12);border:1px solid var(--teal);color:var(--teal);
+  padding:.5rem 1rem;border-radius:8px;cursor:pointer;font-size:.8rem;letter-spacing:.06em}
+#rescan-btn:hover{background:rgba(79,240,224,.22)}
+#rescan-btn:disabled{opacity:.5;cursor:default}
+
+main{display:flex;flex:1;min-height:0;gap:1px;background:var(--line)}
+.graph-panel{flex:1;background:var(--void);position:relative;min-height:340px}
+#network-graph{position:absolute;inset:0}
+
+.side-panels{width:340px;flex-shrink:0;display:flex;flex-direction:column;gap:1px;background:var(--line);overflow-y:auto}
+.panel{background:var(--panel);padding:.9rem 1rem}
+.panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin:0 0 .7rem}
+
+.device-row{display:flex;align-items:center;gap:.6rem;padding:.5rem 0;border-bottom:1px solid var(--line);font-size:.76rem}
+.device-row:last-child{border-bottom:none}
+.device-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.device-dot.online{background:var(--good);box-shadow:0 0 6px var(--good)}
+.device-dot.offline{background:var(--muted)}
+.device-info{min-width:0;flex:1}
+.device-name{color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.device-sub{color:var(--muted);font-size:.68rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.device-ports{font-size:.66rem;color:var(--teal)}
+.device-row.is-offline .device-name{color:var(--muted)}
+.tag-new,.tag-rand{font-size:.6rem;padding:0 .35rem;border-radius:4px;margin-left:.3rem;vertical-align:1px}
+.tag-new{background:var(--gold);color:#160b04}
+.tag-rand{border:1px solid var(--muted);color:var(--muted)}
+.rename-btn{font-family:inherit;font-size:.66rem;background:none;border:1px solid var(--line);color:var(--muted);border-radius:6px;padding:.3rem .5rem;cursor:pointer;min-height:28px}
+.rename-btn:hover,.rename-btn:focus-visible{color:var(--teal);border-color:var(--teal)}
+.rename{display:flex;gap:.4rem;margin-top:.4rem}
+.rename[hidden]{display:none}
+#router-body,#diagnostics-body{font-size:.74rem;color:var(--muted)}
+.rename input{flex:1;min-width:0;font:inherit;font-size:.74rem;background:var(--void);color:var(--text);border:1px solid var(--teal);border-radius:6px;padding:.35rem .5rem}
+.rename button{font:inherit;font-size:.7rem;background:var(--teal);color:#05070a;border:0;border-radius:6px;padding:.35rem .6rem;cursor:pointer}
+
+.list-head{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--good);margin:.4rem 0 .2rem;display:flex;justify-content:space-between}
+.list-head.off{color:var(--muted);margin-top:1rem}
+.list-empty{font-size:.72rem;color:var(--muted);margin:.3rem 0}
+#help-panel summary{cursor:pointer;color:var(--gold);font-size:.74rem;letter-spacing:.06em;min-height:28px;display:flex;align-items:center}
+#help-panel ul{margin:.5rem 0 0;padding-left:1.1rem;font-size:.72rem;line-height:1.5;color:var(--text)}
+#help-panel li{margin-bottom:.35rem}
+#help-panel b{color:var(--teal);font-weight:normal}
+.diag-row{display:flex;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid var(--line);font-size:.74rem}
+.diag-row:last-child{border-bottom:none}
+.diag-label{color:var(--muted)}
+.diag-val.ok{color:var(--good)}
+.diag-val.warn{color:var(--warn)}
+.diag-val.bad{color:var(--bad)}
+
+#log-panel{border-top:1px solid var(--line);background:var(--panel);flex-shrink:0;max-height:220px;display:flex;flex-direction:column;transition:max-height .2s}
+#log-panel.collapsed{max-height:34px}
+.log-header{display:flex;justify-content:space-between;align-items:center;padding:.5rem 1rem;font-size:.72rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;cursor:pointer;flex-shrink:0}
+#log-toggle{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem}
+#log-body{overflow-y:auto;padding:0 1rem .8rem;font-size:.72rem;color:var(--teal);white-space:pre-wrap}
+
+@media (max-width:760px){
+  main{flex-direction:column}
+  .side-panels{width:100%;flex-direction:row;flex-wrap:wrap}
+  .panel{flex:1;min-width:260px}
+  .graph-panel{min-height:280px}
+}

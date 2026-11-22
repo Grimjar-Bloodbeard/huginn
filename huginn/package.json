@@ -1,0 +1,16 @@
+{
+  "name": "huginn",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A personal network command center: a live, read-only view of the home network (devices, traffic, packets, line health).",
+  "scripts": {
+    "eyes": "node scripts/eyes-check.js",
+    "test": "node --test test/",
+    "command": "node command/server.js",
+    "setup-command": "python -m venv command/.venv && command/.venv/Scripts/python -m pip install scapy"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "web-push": "3.6.7"
+  }
+}

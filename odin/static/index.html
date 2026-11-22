@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Odin's Watch</title>
+<link rel="stylesheet" href="/static/dashboard.css">
+<script src="/static/vendor/vis-network.min.js"></script>
+</head>
+<body>
+
+<header>
+  <h1>⚡ ODIN'S WATCH</h1>
+  <div class="meta">
+    <span id="device-count">– devices</span>
+    <span id="last-scan">never scanned</span>
+  </div>
+  <button id="rescan-btn" type="button">Rescan</button>
+</header>
+
+<main>
+  <section class="graph-panel">
+    <div id="network-graph"></div>
+  </section>
+
+  <aside class="side-panels">
+    <details class="panel" id="help-panel">
+      <summary>What am I looking at?</summary>
+      <ul>
+        <li><b>The map</b> (left): every device in your house that's on your wifi or plugged into the router. Drag dots around; hover one for details.</li>
+        <li><b>Green dot</b> = connected right now. <b>Grey</b> = Odin has seen it before, but it's off or away.</li>
+        <li><b>Connected now</b> comes from two checks: Odin knocking on every address (the scan), and the router's own list. A sleeping TV or phone may only show up on one of them.</li>
+        <li><b>new</b> = first seen in the last day. If you don't recognize it, that's worth a look.</li>
+        <li><b>rand</b> = the device uses a made-up ID for privacy. Almost always a phone or tablet.</li>
+        <li><b>Numbers on the right</b> (like 8008,8009) = doors the device answers on. Google/Nest and Chromecast use 8443, 8008 or 8009; that is normal.</li>
+        <li><b>Name</b> = give it a name you'll recognize, like "Bedroom TV". Only Odin sees that name.</li>
+        <li><b>Router</b> panel: Odin reads the router's device list. It never changes a setting.</li>
+      </ul>
+    </details>
+
+    <section class="panel" id="devices-panel">
+      <h2>Devices</h2>
+      <div id="device-list"></div>
+    </section>
+
+    <section class="panel" id="router-panel">
+      <h2>Router</h2>
+      <div id="router-body">Loading...</div>
+    </section>
+
+    <section class="panel" id="diagnostics-panel">
+      <h2>Diagnostics</h2>
+      <div id="diagnostics-body">No scan run yet.</div>
+    </section>
+  </aside>
+</main>
+
+<div id="log-panel" class="collapsed">
+  <div class="log-header">
+    <span>Scan log</span>
+    <button id="log-toggle" type="button">▲</button>
+  </div>
+  <div id="log-body"></div>
+</div>
+
+<script src="/static/dashboard.js"></script>
+</body>
+</html>
