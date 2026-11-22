@@ -994,6 +994,7 @@ function renderDrawer() {
         <button type="button" data-more="log">Live activity</button>
         <button type="button" data-more="simple">${S.simple ? "Simple view is on (tap for full view)" : "Simple view (bigger, calmer, fewer dots)"}</button>
         <button type="button" data-more="scan">Scan for devices now</button>
+        <button type="button" data-more="drill">Practice drill (safe attack simulation)</button>
         ${/Android/.test(navigator.userAgent) && !navigator.userAgent.includes("HuginnApp/") ? `<a class="moreLink" href="download/huginn.apk" download>Get the Android app</a>` : ""}
       </div>`;
   } else if (key === "unusual:home") {
@@ -1294,6 +1295,7 @@ drawerBody.addEventListener("click", (e) => {
   if (a === "rewind") $("rewindBtn").click();
   if (a === "log") { closeDrawer(); $("logBtn").click(); }
   if (a === "scan") { closeDrawer(); scanNow(); }
+  if (a === "drill") { closeDrawer(); if (window.Drill) window.Drill.open(); }
 });
 
 // ---------- the one-line answer to "is everything OK at home?" ----------

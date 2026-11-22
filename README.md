@@ -23,6 +23,13 @@ That is it. To stop it, close the window.
 - Does not: log in to anything, guess passwords, run exploits, change settings, or send
   your data anywhere.
 
+## Try the Practice drill
+
+Under **More > Practice drill** you can run a safe, simulated attack (a rogue device,
+a command-and-control beacon, or data exfiltration) and watch Huginn light up, then
+read the step-by-step on how you would respond. It is entirely synthetic: nothing
+touches your real network.
+
 ## Permission, first
 
 Only run Huginn on a network you own or have **written permission** to watch. Scanning a
