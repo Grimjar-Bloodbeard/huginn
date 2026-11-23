@@ -31,6 +31,16 @@ outside-in attack (recon, break-in, foothold, phone-home, spread, steal), a rogu
 and port scan, a command-and-control beacon, and data exfiltration. It is entirely
 synthetic: nothing touches your real network.
 
+## Live packet view (optional)
+
+The map and everything above work with no driver. The live packet "sparks" (your PC's own
+packets moving on the map) need a capture driver, Npcap. We cannot ship Npcap (its free
+licence does not allow redistributing the installer), so you add it once: download it from
+[npcap.com](https://npcap.com), drop the installer in the `capture/` folder, and run
+**Enable-Capture.bat** as administrator. It verifies the installer, shows its SHA-256, and
+runs the official signed installer. Npcap is a kernel driver, so on a managed PC this is the
+step most likely to need IT approval.
+
 ## Permission, first
 
 Only run Huginn on a network you own or have **written permission** to watch. Scanning a
@@ -43,6 +53,7 @@ security review you can hand to whoever runs the network.
 - **odin/** the network lister (Python)
 - **muninn/** an optional, read-only Windows host audit (PowerShell, run as admin)
 - **for-IT/** a security review and a defender's playbook
+- **Enable-Capture.bat / capture/** optional live-capture setup (installs Npcap)
 - **runtime/** bundled Node and Python (in the release zip, not in this repo)
 
 Read-only recon on networks you are allowed to watch. Nothing here attacks, exploits, or

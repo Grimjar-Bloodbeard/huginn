@@ -19,10 +19,17 @@ CHANGE THE NAME OR THE NETWORK
 site\huginn.config.json   "siteName": "Room 214 lab"
 odin\config.json          "subnets": the networks to map (cidr like 10.20.30.0/24)
 
-LIVE PACKET SPARKS (optional)
-Huginn can show this PC's traffic live. That needs Npcap installed once on this PC
-(https://npcap.com, by an admin, with permission). Without it everything else works.
-Npcap's free licence covers a few machines; a school should check its terms.
+LIVE PACKET SPARKS (the moving packets)
+Huginn shows the map and everything else with no driver. The live sparks (this PC's own
+packets moving on the map) need a capture driver called Npcap. To turn them on:
+  1. Download Npcap once from https://npcap.com (free for a few machines) and copy the
+     npcap-<version>.exe into the capture\ folder on this stick.
+  2. Run Enable-Capture.bat as administrator. It checks the file, shows its SHA-256 so you
+     and IT can verify it against npcap.com, then runs the official signed installer.
+  3. Start.bat from then on shows the live sparks.
+Npcap is a kernel driver, so on a managed PC this is the step endpoint protection is most
+likely to block. Get it approved first (the for-IT\ folder explains it). Without Npcap,
+everything else still works. We cannot bundle Npcap: its licence does not allow it.
 
 MUNINN (checking a computer)
 muninn\ is the host audit kit. Put Microsoft Sysinternals (Process Explorer, TCPView,
@@ -31,8 +38,10 @@ muninn\run-collect.bat, Run as administrator. Read muninn\reports\<time>\FLAGS.t
 It collects and flags. It never deletes or kills anything.
 
 WHAT'S IN HERE
-Start.bat     start everything
-kit\          the launcher
+Start.bat          start everything
+Enable-Capture.bat turn on the live packet sparks (installs Npcap; admin, optional)
+capture\           where you drop the Npcap installer
+kit\               the launcher
 huginn\       the command center
 odin\         Odin's Watch
 muninn\       Muninn

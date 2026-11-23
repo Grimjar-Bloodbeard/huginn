@@ -7,3 +7,7 @@ kit/site/
 huginn/data/
 *.local.json
 *.log
+
+# Never commit the Npcap installer (its licence forbids redistribution) or capture binaries.
+capture/*.exe
+**/npcap*.exe
