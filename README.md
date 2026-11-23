@@ -25,10 +25,11 @@ That is it. To stop it, close the window.
 
 ## Try the Practice drill
 
-Under **More > Practice drill** you can run a safe, simulated attack (a rogue device,
-a command-and-control beacon, or data exfiltration) and watch Huginn light up, then
-read the step-by-step on how you would respond. It is entirely synthetic: nothing
-touches your real network.
+Under **More > Practice drill** you can run a safe, simulated attack and watch Huginn
+light up, then read the step-by-step on how you would respond. Scenarios include a full
+outside-in attack (recon, break-in, foothold, phone-home, spread, steal), a rogue device
+and port scan, a command-and-control beacon, and data exfiltration. It is entirely
+synthetic: nothing touches your real network.
 
 ## Permission, first
 

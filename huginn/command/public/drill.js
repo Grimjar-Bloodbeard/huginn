@@ -8,7 +8,7 @@
 // Classic script: shares app.js globals (S, nodes, node, place, addSparks, toast,
 // layout, CX, CY, R1, R2, COLORS, openDrawer, closeDrawer).
 (function () {
-  const FAKE = { devices: [], hosts: [], lookups: [] };
+  const FAKE = { devices: [], hosts: [], lookups: [], hi: [] };
   const timers = [];
   let active = null;
   let banner = null, hud = null, t0 = 0;
@@ -35,6 +35,7 @@
     S.hosts.set(ip, { ip, name, org, in: 0, out: 0, pkts: 0, progs: {}, ports: {}, first: now(), last: now(), _drill: true });
     FAKE.hosts.push(ip);
   }
+  function light(key) { if (S.highlight) { S.highlight.add(key); FAKE.hi.push(key); } }
   function setLookups(ip, rows, blocked) {
     S.lookups.set(ip, { total: rows.length * 4, blocked: blocked || 0, last: now(), top: rows.map((d) => [d, 4, false, now()]) });
     FAKE.lookups.push(ip);
@@ -50,6 +51,49 @@
 
   // ---- scenarios ----
   const SCENARIOS = {
+    killchain: {
+      title: "Attack from outside - the whole path",
+      blurb: "Watch an attacker on the internet work in from your router, get a foothold, spread, and steal - the usual order a real break-in follows.",
+      run(say) {
+        const atk = "203.0.113.66", atkName = "scanner-cloud-7.example", victim = "10.0.0.143", router = "router";
+        spawnHost(atk, atkName, "Attacker (simulated)");
+        light("net:" + atk);
+        say("Step 1 of 6 - Recon. An attacker out on the internet is scanning your router, your front door, looking for a way in.");
+        toast("Simulated alert: outside host probing the router.");
+        const recon = every(650, () => spark([["net:" + atk, router, "in", 90]]));
+        after(6000, () => {
+          say("Step 2 - Break-in. They hammer the router's exposed service with known passwords and a known exploit.");
+          toast("Simulated alert: repeated login attempts from outside.");
+        });
+        after(12000, () => {
+          clearInterval(recon);
+          spawnDevice(victim, "desk-pc-14", "computer", {});
+          light("lan:" + victim);
+          say("Step 3 - Foothold. One machine falls. The attacker is now INSIDE your network - see the path run from outside, through the router, to that PC.");
+          toast("Simulated alert: a device looks compromised.");
+          every(900, () => spark([["net:" + atk, "lan:" + victim, "in", 160]]));
+        });
+        after(19000, () => {
+          say("Step 4 - Phone home. The infected PC beacons back out to the attacker on a steady timer, waiting for orders.");
+          every(2500, () => spark([["lan:" + victim, "net:" + atk, "out", 80]]));
+        });
+        after(25000, () => {
+          say("Step 5 - Spread. From that one PC they scan and hop sideways to your other machines. This is lateral movement.");
+          toast("Simulated alert: internal scan from the compromised PC.");
+          every(700, () => { const t = realTargets(5); spark(t.map((x) => ["lan:" + victim, "lan:" + x, "lan", 110])); });
+        });
+        after(31000, () => {
+          say("Step 6 - Steal. Finally they haul your data out - a big upload from the PC, through the router, to their server.");
+          every(650, () => spark([["lan:" + victim, "net:" + atk, "out", 4200]]));
+        });
+        after(38000, () => debrief([
+          ["The chain", "Recon &rarr; break-in &rarr; foothold &rarr; phone-home &rarr; spread &rarr; steal. Almost every real intrusion walks these steps in this order."],
+          ["Break it early", "You do not have to catch step 1. Quarantine the <b>first</b> odd device (the foothold) and every step after it stops."],
+          ["Where Huginn sees it", "Outside probing the router, a device talking to an unknown host on a timer, an internal scan, a big outbound upload - each stage is one of its alerts."],
+          ["Your move", "Open the flagged PC, <b>Enumerate</b> to confirm, <b>Quarantine</b> to cut it off, then clean the host. The earlier you cut, the less they reach."],
+        ]));
+      },
+    },
     rogue: {
       title: "Rogue device + port scan",
       blurb: "A device you have never seen joins the Wi-Fi and starts knocking on every door of your other devices.",
@@ -159,6 +203,7 @@
     for (const ip of FAKE.devices.splice(0)) { S.devices.delete(ip); S.lan.delete(ip); }
     for (const ip of FAKE.hosts.splice(0)) S.hosts.delete(ip);
     for (const ip of FAKE.lookups.splice(0)) S.lookups.delete(ip);
+    for (const key of FAKE.hi.splice(0)) if (S.highlight) S.highlight.delete(key);
     active = null;
     if (typeof layout === "function") layout(false);
     if (banner) banner.hidden = true;
