@@ -105,6 +105,66 @@ _ARP_LINE_POSIX = re.compile(
 )
 
 
+_BAD_MACS = ("FF:FF:FF:FF:FF:FF", "00:00:00:00:00:00")
+
+
+def parse_proc_net_arp(text):
+    """Linux kernel ARP cache (/proc/net/arp). Flags 0x0 means the entry never completed."""
+    table = {}
+    for line in text.splitlines()[1:]:
+        cols = line.split()
+        if len(cols) < 4 or cols[2] == "0x0":
+            continue
+        ip, mac = cols[0], cols[3].upper()
+        if re.fullmatch(r"[0-9A-F]{2}(:[0-9A-F]{2}){5}", mac) and mac not in _BAD_MACS:
+            table[ip] = mac
+    return table
+
+
+_IP_NEIGH_LINE = re.compile(
+    r"^(\d{1,3}(?:\.\d{1,3}){3})\s.*\blladdr\s+([0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){5})"
+)
+
+
+def parse_ip_neigh(text):
+    """`ip neigh` output: 192.168.1.1 dev wlan0 lladdr aa:bb:cc:dd:ee:ff REACHABLE"""
+    table = {}
+    for line in text.splitlines():
+        line = line.strip()
+        m = _IP_NEIGH_LINE.search(line)
+        if m and "FAILED" not in line and "INCOMPLETE" not in line:
+            mac = m.group(2).upper()
+            if mac not in _BAD_MACS:
+                table[m.group(1)] = mac
+    return table
+
+
+def _read_arp_linux_fallbacks():
+    """Modern distros often lack `arp` (net-tools). Ask the kernel, then iproute2."""
+    try:
+        with open("/proc/net/arp", encoding="utf-8", errors="ignore") as f:
+            table = parse_proc_net_arp(f.read())
+        if table:
+            return table
+    except Exception:
+        pass   # newer Android (Termux) blocks this file
+    try:
+        out = subprocess.run(["ip", "neigh"], stdout=subprocess.PIPE,
+                             stderr=subprocess.DEVNULL, timeout=10).stdout.decode(errors="ignore")
+        return parse_ip_neigh(out)
+    except Exception:
+        return {}
+
+
+def ping_only_hosts(arp_table, alive, network):
+    """Hosts to list by address alone. Only used when the ARP table came back completely empty
+    (Android hides it from apps), so a working ARP table never gets MAC-less duplicates."""
+    if arp_table:
+        return []
+    return sorted((ip for ip in (alive or ()) if ipaddress.ip_address(ip) in network),
+                  key=lambda ip: tuple(map(int, ip.split("."))))
+
+
 def read_arp_table():
     """Parse the OS ARP cache into {ip: mac (colon form, uppercase)}."""
     try:
@@ -113,7 +173,11 @@ def read_arp_table():
             timeout=10,
         ).stdout.decode(errors="ignore")
     except Exception:
-        return {}
+        if IS_WINDOWS:
+            return {}
+        output = ""
+    if not IS_WINDOWS and not _ARP_LINE_POSIX.search(output):
+        return _read_arp_linux_fallbacks()
 
     table = {}
     pattern = _ARP_LINE_WIN if IS_WINDOWS else _ARP_LINE_POSIX
@@ -282,11 +346,12 @@ def scan_subnet(subnet_cfg, scan_cfg, on_progress=None):
         and is_elevated()
     )
 
+    ping_only = []
     if use_scapy:
         arp_table = scapy_arp_sweep(cidr, on_progress=log)
     else:
         log(f"ping-sweeping {cidr} (timeout {scan_cfg.get('ping_timeout_ms', 500)}ms/host)")
-        ping_sweep(
+        alive = ping_sweep(
             cidr,
             timeout_ms=scan_cfg.get("ping_timeout_ms", 500),
             concurrency=scan_cfg.get("ping_concurrency", 64),
@@ -297,8 +362,12 @@ def scan_subnet(subnet_cfg, scan_cfg, on_progress=None):
         network = ipaddress.ip_network(cidr, strict=False)
         arp_table = {ip: mac for ip, mac in arp_table.items()
                      if ipaddress.ip_address(ip) in network}
+        ping_only = ping_only_hosts(arp_table, alive, network)
+        if ping_only:
+            log("this system won't share its ARP table (normal on Android), so devices that "
+                "answered the ping are listed by address only, without a hardware ID")
 
-    log(f"{len(arp_table)} device(s) found on {subnet_cfg['name']}")
+    log(f"{len(arp_table) + len(ping_only)} device(s) found on {subnet_cfg['name']}")
 
     ports = scan_cfg.get("ports_to_check", [22, 80, 443, 8080])
     port_timeout = scan_cfg.get("port_check_timeout_ms", 400)
@@ -311,13 +380,14 @@ def scan_subnet(subnet_cfg, scan_cfg, on_progress=None):
         mdns_table = mdns_discover(timeout=3.0)
 
     devices = []
-    for ip, mac in sorted(arp_table.items(), key=lambda kv: tuple(map(int, kv[0].split(".")))):
+    found = list(arp_table.items()) + [(ip, None) for ip in ping_only]
+    for ip, mac in sorted(found, key=lambda kv: tuple(map(int, kv[0].split(".")))):
         vendor = vendor_for_mac(mac)
         hostname = resolve_hostname(ip, mdns_table=mdns_table)
         open_ports = check_ports(ip, ports, timeout_ms=port_timeout)
         device_type = classify_device(ip, mac, vendor, hostname, open_ports, gateway_ips)
 
-        log(f"{ip} -> {mac}  {vendor or 'unknown vendor'}  "
+        log(f"{ip} -> {mac or 'no hardware ID'}  {vendor or 'unknown vendor'}  "
             f"[{device_type}]  ports={open_ports or 'none'}")
 
         devices.append({

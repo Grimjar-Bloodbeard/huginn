@@ -34,7 +34,8 @@ const ODIN_POST = { "Content-Type": "application/json", "X-Odin": "1" };
 // Where things live. At home these are the defaults; the Ravens kit (a USB stick for a lab) sets them
 // with HUGINN_CONFIG, HUGINN_DATA, HUGINN_PYTHON and ODIN_URL so nothing depends on this PC.
 const PUBLIC = path.join(__dirname, "public");
-const PY = process.env.HUGINN_PYTHON || path.join(__dirname, ".venv", "Scripts", "python.exe");
+const PLAT = require("../lib/platform");
+const PY = process.env.HUGINN_PYTHON || (PLAT.IS_WIN ? path.join(__dirname, ".venv", "Scripts", "python.exe") : path.join(__dirname, ".venv", "bin", "python3"));
 const ROOT = path.join(__dirname, "..");
 
 const CONFIG_FILE = path.resolve(ROOT, process.env.HUGINN_CONFIG || "config.local.json");
@@ -101,7 +102,9 @@ const state = {
 
 function localIps() {
   const ips = [];
-  for (const list of Object.values(os.networkInterfaces())) for (const a of list || []) ips.push(a.address);
+  try {   // newer Android (Termux) refuses this call; the sniffer reports this machine's address anyway
+    for (const list of Object.values(os.networkInterfaces())) for (const a of list || []) ips.push(a.address);
+  } catch { /* fall back to what capture or the route check tells us */ }
   return ips;
 }
 
@@ -168,7 +171,13 @@ function startSniffer() {
   sniffer.stderr.on("data", (d) => { err = (err + d).slice(-400); });
   sniffer.on("exit", () => {
     const last = err.trim().split("\n").pop() || "stopped";
-    state.capture = { on: false, note: `Capture stopped (${last}). Restarting.` };
+    const denied = /Operation not permitted|PermissionError|Permission denied/i.test(err);
+    state.capture = denied
+      ? { on: false, note: PLAT.IS_WIN ? "Live packets need Npcap (run Enable-Capture.bat)."
+          : PLAT.IS_TERMUX ? "Live packets need root on a phone. The map, Enumerate and the drill still work."
+          : "Live packets need capture permission: run  huginn capture" }
+      : { on: false, note: `Capture stopped (${last}). Restarting.` };
+    if (denied) sniffBackoff = 30000;
     setTimeout(startSniffer, sniffBackoff);
     sniffBackoff = Math.min(sniffBackoff * 2, 30000);
   });
@@ -177,6 +186,7 @@ function startSniffer() {
 // ---------- True up/down speed from Windows' own counters ----------
 const SKIP_ADAPTER = /isatap|teredo|loopback|vethernet|virtual|tailscale|wintun|miniport|bluetooth|hyper-v|wsl/i;
 function startSpeed() {
+  if (!PLAT.IS_WIN) return startSpeedLinux();
   const p = spawn("typeperf", ["-si", "1",
     "\\Network Interface(*)\\Bytes Received/sec", "\\Network Interface(*)\\Bytes Sent/sec"], { windowsHide: true });
   let header = null;
@@ -196,16 +206,31 @@ function startSpeed() {
     state.down = down; state.up = up;
     state.peakDown = Math.max(state.peakDown, down); state.peakUp = Math.max(state.peakUp, up);
   });
+  p.on("error", () => { /* typeperf missing: speed stays at 0 */ });
   p.on("exit", () => setTimeout(startSpeed, 5000));
+}
+// Linux and Termux: the kernel's own byte counters, read once a second.
+function startSpeedLinux() {
+  let prev = null, prevAt = 0;
+  const tick = () => {
+    let text = "";
+    try { text = fs.readFileSync("/proc/net/dev", "utf8"); } catch { return; }   // not readable here: speed stays 0
+    const now = Date.now(), next = PLAT.parseProcNetDev(text);
+    if (prev) {
+      const { down, up } = PLAT.rates(prev, next, (now - prevAt) / 1000);
+      state.down = down; state.up = up;
+      state.peakDown = Math.max(state.peakDown, down); state.peakUp = Math.max(state.peakUp, up);
+    }
+    prev = next; prevAt = now;
+    setTimeout(tick, 1000);
+  };
+  tick();
 }
 
 // ---------- Latency: router and internet ----------
 function ping(host) {
   return new Promise((res) => {
-    execFile("ping", ["-n", "1", "-w", "1000", host], { windowsHide: true }, (e, out) => {
-      const m = /time([=<])(\d+)ms/i.exec(out || "");
-      res(m ? (m[1] === "<" ? 0.5 : Number(m[2])) : null);
-    });
+    execFile("ping", PLAT.pingArgs(host), { windowsHide: true, timeout: 3000 }, (e, out) => res(PLAT.parsePing(out)));
   });
 }
 function keep(arr, v, n = 150) { arr.push(v); if (arr.length > n) arr.shift(); }
@@ -226,6 +251,11 @@ function run(cmd, args) {
     (e, out) => res(out || "")));
 }
 async function portsLoop() {
+  if (!PLAT.IS_WIN) {   // Linux: one command answers it. Without root it sees this user's programs, which is what we want.
+    flows.setPorts(PLAT.parseSs(await run("ss", ["-tunapH"])));
+    setTimeout(portsLoop, 3000);
+    return;
+  }
   const [ns, tl] = await Promise.all([run("netstat", ["-ano"]), run("tasklist", ["/fo", "csv", "/nh"])]);
   const names = new Map();
   for (const line of tl.split(/\r?\n/)) {

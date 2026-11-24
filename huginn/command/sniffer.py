@@ -123,7 +123,16 @@ def main():
     # the footprint minimal and avoids the promiscuous-mode flag that network monitors raise.
     conf.promisc = False
     conf.sniff_promisc = False
-    sniff(iface=iface, prn=on_packet, store=False, filter="ip or ip6", promisc=False)
+    try:
+        sniff(iface=iface, prn=on_packet, store=False, filter="ip or ip6", promisc=False)
+    except PermissionError:
+        raise
+    except Exception as e:
+        # On Linux the filter is compiled by libpcap or tcpdump. If neither is installed, capture
+        # everything and let on_packet skip what is not IP (it already does).
+        if "filter" not in str(e).lower() and "tcpdump" not in str(e).lower() and "pcap" not in str(e).lower():
+            raise
+        sniff(iface=iface, prn=on_packet, store=False, promisc=False)
 
 
 if __name__ == "__main__":

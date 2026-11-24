@@ -96,6 +96,19 @@ def merge(scanned, leases=None, now=None):
             "baseline": bool(rec.get("baseline")),
             "private_mac": is_private_mac(mac),
         })
+    # Devices the scan found by address only (no hardware ID, e.g. on Android). Shown on the map
+    # but never remembered: an address alone changes with DHCP, so tracking it would raise
+    # false "new device" alerts.
+    for d in scanned:
+        if d.get("mac"):
+            continue
+        out.append({
+            "mac": None, "ip": d.get("ip"), "vendor": None, "hostname": d.get("hostname"),
+            "router_name": None, "label": None, "device_type": d.get("device_type"),
+            "subnet": d.get("subnet"), "role": d.get("role"), "open_ports": d.get("open_ports") or [],
+            "status": "online", "seen_by": "scan", "first_seen": None,
+            "last_seen": d.get("last_seen"), "baseline": True, "private_mac": False,
+        })
     return out, new
 
 

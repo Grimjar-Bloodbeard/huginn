@@ -4,6 +4,7 @@ runtime/
 node_modules/
 **/node_modules/
 kit/site/
+site/
 huginn/data/
 *.local.json
 *.log
