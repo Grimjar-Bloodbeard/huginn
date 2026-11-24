@@ -4,6 +4,7 @@
 // exported so they can be tested against real sample output on any machine.
 "use strict";
 const fs = require("fs");
+const path = require("path");
 const dgram = require("dgram");
 
 const IS_WIN = process.platform === "win32";
@@ -101,6 +102,29 @@ function localIpViaRoute() {
   });
 }
 
+// ---------- packet capture: should the capture helper even be started? ----------
+// The capture helper is the kit's Python running sniffer.py (scapy). On a managed PC, starting it
+// is the step endpoint protection notices, so it is never launched unless it can and may run:
+//  - "capture": false in this site's settings  -> never
+//  - Windows without Npcap                     -> never (it could only fail and retry)
+//  - Windows at a site (the lab stick)         -> only once "capture": true is set, which
+//                                                 Enable-Capture.bat does after Npcap is approved and installed
+//  - home, or Linux (gated by its own `huginn capture` permission) -> yes
+function npcapInstalled() {
+  if (!IS_WIN) return false;
+  const root = process.env.SystemRoot || "C:\\Windows";
+  return [path.join(root, "System32", "Npcap", "wpcap.dll"), path.join(root, "System32", "wpcap.dll")]
+    .some((p) => { try { return fs.existsSync(p); } catch { return false; } });
+}
+function captureDecision({ setting, site, isWin, npcap }) {
+  if (setting === false) return { start: false, note: "Live packets are switched off in this site's settings." };
+  if (isWin && !npcap) return { start: false, note: "Live packets need Npcap, which isn't installed, so capture is not started." };
+  if (isWin && site && setting !== true) {
+    return { start: false, note: "Live packets are off at this site until approved. Once IT approves, run Enable-Capture.bat." };
+  }
+  return { start: true, note: null };
+}
+
 // ---------- opening the browser ----------
 function openUrlCommand(url) {
   if (IS_WIN) return ["cmd", ["/c", "start", "", url]];
@@ -111,4 +135,5 @@ function openUrlCommand(url) {
 }
 
 module.exports = { IS_WIN, IS_TERMUX, pingArgs, parsePing, parseProcNetDev, rates, parseSs,
-  hexToIp, parseProcRoute, linuxDefaultRoute, localIpViaRoute, openUrlCommand, SKIP_LINUX_IFACE };
+  hexToIp, parseProcRoute, linuxDefaultRoute, localIpViaRoute, openUrlCommand, SKIP_LINUX_IFACE,
+  npcapInstalled, captureDecision };

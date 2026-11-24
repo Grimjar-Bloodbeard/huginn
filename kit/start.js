@@ -76,13 +76,19 @@ async function askPermission() {
   return { by: by || "not given", at: new Date().toISOString() };
 }
 
+function readSite() {
+  try { return JSON.parse(fs.readFileSync(SITE_FILE, "utf8").replace(/^﻿/, "")); } catch { return {}; }
+}
 async function firstRun() {
-  if (fs.existsSync(SITE_FILE)) return JSON.parse(fs.readFileSync(SITE_FILE, "utf8"));
+  // Enable-Capture.bat may have created this file (with just "capture") before the first start,
+  // so "set up" means permission was recorded, not merely that the file exists.
+  const existing = readSite();
+  if (existing.permission) return existing;
   const permission = await askPermission();
   const net = await detectSubnet();
   if (!net) { say("Couldn't find this machine's network. Is it connected?"); process.exit(1); }
   fs.mkdirSync(SITE_DIR, { recursive: true });
-  const site = { siteName: process.env.SITE_NAME || "the lab", odinDevicesFile: path.join(KIT, "odin", "network_topology.json"), permission };
+  const site = { ...existing, siteName: process.env.SITE_NAME || "the lab", odinDevicesFile: path.join(KIT, "odin", "network_topology.json"), permission };
   fs.writeFileSync(SITE_FILE, JSON.stringify(site, null, 2));
   // Odin's Watch: scan only this one /24, and show its dashboard on this machine only.
   const odinCfgFile = path.join(KIT, "odin", "config.json");

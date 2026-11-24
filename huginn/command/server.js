@@ -149,6 +149,8 @@ function setGateway(gw) {
 // ---------- Packet capture ----------
 let sniffer = null, sniffBackoff = 1000;
 function startSniffer() {
+  const gate = PLAT.captureDecision({ setting: CONFIG.capture, site: !!SITE, isWin: PLAT.IS_WIN, npcap: PLAT.npcapInstalled() });
+  if (!gate.start) { state.capture = { on: false, note: gate.note }; return; }   // the helper is not launched at all
   if (!fs.existsSync(PY)) {
     state.capture = { on: false, note: "Capture isn't set up: run npm run setup-command" };
     return;

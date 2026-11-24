@@ -54,14 +54,38 @@ function Test-Admin {
   return ([Security.Principal.WindowsPrincipal]$id).IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)
 }
 
-if (Test-Npcap) {
-  Write-Host "Npcap is already installed. Huginn's live packet view will work." -ForegroundColor Green
-  exit 0
+# Switch live packets on for this kit. Huginn never even starts its capture helper at a site until
+# this is set, so running this script is the explicit "IT approved capture here" step.
+function Set-CaptureOn {
+  $siteDir = Join-Path $Root "site"
+  $cfg = Join-Path $siteDir "huginn.config.json"
+  if (-not (Test-Path $siteDir)) { New-Item -ItemType Directory -Path $siteDir | Out-Null }
+  $obj = $null
+  if (Test-Path $cfg) {
+    try { $obj = Get-Content -Raw -Path $cfg | ConvertFrom-Json }
+    catch {
+      Write-Host "Couldn't read $cfg, so it was left alone. Add `"capture`": true to it by hand." -ForegroundColor Yellow
+      return
+    }
+  }
+  if ($null -eq $obj) { $obj = New-Object PSObject }
+  $obj | Add-Member -NotePropertyName capture -NotePropertyValue $true -Force
+  $json = $obj | ConvertTo-Json -Depth 10
+  [System.IO.File]::WriteAllText($cfg, $json, (New-Object System.Text.UTF8Encoding $false))   # no BOM
+  Write-Host "Live packets switched on for this kit (site\huginn.config.json: capture = true)."
 }
+
 if ($Status) {
+  if (Test-Npcap) { Write-Host "Npcap is installed." -ForegroundColor Green; exit 0 }
   Write-Host "Npcap is NOT installed. Huginn runs fine without it, but the live packet sparks are off." -ForegroundColor Yellow
   Write-Host "Run this script without -Status to install it (needs administrator and, on a managed PC, IT approval)."
   exit 1
+}
+if (Test-Npcap) {
+  Write-Host "Npcap is already installed." -ForegroundColor Green
+  Set-CaptureOn
+  Write-Host "Restart Start.bat and the live packet sparks will show."
+  exit 0
 }
 
 Write-Host "Npcap is not installed yet. The live packet view needs it." -ForegroundColor Yellow
@@ -134,7 +158,9 @@ if ($Silent) {
 
 Start-Sleep -Seconds 2
 if (Test-Npcap) {
-  Write-Host "`nDone. Npcap is installed. Start Huginn (Start.bat) and the live packet sparks will show." -ForegroundColor Green
+  Write-Host "`nDone. Npcap is installed." -ForegroundColor Green
+  Set-CaptureOn
+  Write-Host "Start Huginn (Start.bat) and the live packet sparks will show."
   exit 0
 } else {
   Write-Host "`nNpcap still does not look installed. If the installer was blocked, that is likely endpoint protection (EDR). Check with whoever runs the PC." -ForegroundColor Yellow

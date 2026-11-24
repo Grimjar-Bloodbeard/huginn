@@ -103,7 +103,23 @@ Honest detail for your review:
 - Packet **contents are never stored.** Huginn keeps only metadata: source, destination, size, time, and
   the server name from DNS/TLS SNI (which is already visible on the wire). Its 7-day history is this
   metadata only.
-- If you would rather it never capture, simply do not install Npcap, or uninstall it afterward.
+- The capture helper is a separate process: the kit's own `python.exe` (from `runtime\python`)
+  running `huginn\command\sniffer.py` (scapy), started by Huginn. It is the process that opens the
+  Npcap handle, not `node.exe`.
+- **On the lab stick the capture helper is not even started** unless both of these are true:
+  Npcap is installed on this PC, *and* capture has been switched on for this kit
+  (`"capture": true` in `site\huginn.config.json`). `Enable-Capture.bat` sets that switch only
+  when someone runs it after you approve and install Npcap. Setting `"capture": false` keeps it off
+  for good, whatever is installed.
+- If you would rather it never capture, do not install Npcap (or uninstall it afterward), or set
+  `"capture": false`.
+
+> **Correction, 2026-11-24.** Earlier versions of the kit started the capture helper on every run,
+> even when Npcap was not installed. With no driver it could not capture anything, so it failed and
+> relaunched about every 30 seconds. That contradicted this section, and a repeatedly relaunching
+> Python process from removable media can by itself raise an endpoint-protection alert. The current
+> version does not start it at all unless Npcap is present and capture is approved, as described
+> above. If an alert was raised during an earlier run, it may have been this.
 
 ---
 
@@ -160,14 +176,14 @@ what to look for and the exception to consider, once you have decided to allow i
 | You may see | From | Why it is benign | Narrow exception |
 | --- | --- | --- | --- |
 | A host sweeping its subnet with ICMP, then short TCP connects to ~10 ports | `python.exe` running `odin/app.py` | Discovery of its own lab subnet, connect-scan only, fixed small port list | Allow this signed Python image, running from the kit path, this network range |
-| `node.exe` opening a packet-capture handle (Npcap) | Huginn's capture, only if Npcap is installed | Standard Npcap, non-promiscuous, metadata only | Allow `node.exe` from the kit path to use Npcap |
+| The kit's `python.exe` running `sniffer.py` and opening a packet-capture handle (Npcap) | Huginn's capture helper, started only when Npcap is installed **and** capture is switched on for the kit (section 5) | Standard Npcap, non-promiscuous, metadata only | Only if you approve capture: allow the kit's `python.exe` (by hash, from the kit path) to use Npcap. Otherwise leave Npcap off and nothing is started |
 | PowerShell enumerating processes, services, tasks, Run keys, signatures | Muninn's `collect.ps1`, run as admin by the student | Read-only inventory; it changes nothing | Allow this script by hash/path; it never writes outside its folder |
 | `node.exe` connect-scanning one host's common ports, then GET/TLS/UDP(137,1900) probes to it | the opt-in **Enumerate** (Huginn's own code), when a human clicks it | Manual read-only recon of a single authorized device; no logins, no exploits | Allow `node.exe` from the kit path; it only ever targets one local address at a time |
 | A connect scan of ~200 ports on **one** host, with service/version banners | the opt-in **Deep look** (nmap), only if nmap is installed and a human clicks it | Manual recon of a single authorized device; connect scan, no exploits | Decide per policy; leaving nmap uninstalled disables it entirely |
 | Portable `python.exe` / `node.exe` launched from removable media | The kit's own runtimes | Unsigned-by-you but official builds (section 9 lists versions and hashes) | Allow by hash, from the kit path |
 
 None of these involve code injection, process hollowing, LSASS or credential access, token manipulation,
-persistence, or outbound C2 — the behaviors EDR is actually built to stop. If you watch the kit live, that
+persistence, or outbound C2: the behaviors EDR is actually built to stop. If you watch the kit live, that
 absence is the clearest signal that it is what it claims to be.
 
 If your policy is "nothing new runs on managed endpoints, full stop," that is a completely reasonable call;
